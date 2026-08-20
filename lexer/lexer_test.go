@@ -20,7 +20,10 @@ func TestNextToken(t *testing.T) {
 
 				let mut a = 5;
 				a = 100.50;
-`
+
+				!-*/5;
+				5 < 10 > 5;
+			`
 
 	tests := []struct {
 		expectedType token.TokenType
@@ -71,6 +74,18 @@ func TestNextToken(t *testing.T) {
 		{token.IDENT, "a"},
 		{token.ASSIGN, "="},
 		{token.NUMBER, "100.50"},
+		{token.SEMICOLON, ";"},
+		{token.BANG, "!"},
+		{token.MINUS, "-"},
+		{token.ASTERISK, "*"},
+		{token.SLASH, "/"},
+		{token.NUMBER, "5"},
+		{token.SEMICOLON, ";"},
+		{token.NUMBER, "5"},
+		{token.LT, "<"},
+		{token.NUMBER, "10"},
+		{token.GT, ">"},
+		{token.NUMBER, "5"},
 		{token.SEMICOLON, ";"},
 	}
 
