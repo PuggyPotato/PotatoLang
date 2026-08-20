@@ -6,7 +6,6 @@ import (
 )
 
 func TestNextToken(t *testing.T) {
-	
 	input := `
 				let x = 5;
 				let y = 10.5;
