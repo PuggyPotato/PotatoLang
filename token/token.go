@@ -49,6 +49,8 @@ const (
 	RETURN = "RETURN"
 	MUT = "MUT"
 
+	// Types
+	NUMBER_TYPE = "NUMBER"
 )
 
 var keywords = map[string] TokenType {
@@ -60,6 +62,7 @@ var keywords = map[string] TokenType {
 	"else": ELSE,
 	"return": RETURN,
 	"mut": MUT,
+	"number": NUMBER_TYPE,
 }
 
 func LookupIdent(ident string) TokenType {

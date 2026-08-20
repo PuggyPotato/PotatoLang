@@ -6,13 +6,12 @@ import (
 )
 
 func TestNextToken(t *testing.T) {
-	// Todo: Add arrow return types to the function
-	// i.e. func(x, y) -> number { return x + y }
+	
 	input := `
 				let x = 5;
 				let y = 10.5;
 
-				let add = func(x, y) {
+				let add = func(x, y) -> number {
 					return x + y;
 				}
 				
@@ -29,6 +28,9 @@ func TestNextToken(t *testing.T) {
 				} else {
 					return false;
 				}
+
+				10 == 10;
+				10 != 9;
 			`
 
 	tests := []struct {
@@ -54,6 +56,8 @@ func TestNextToken(t *testing.T) {
 		{token.COMMA, ","},
 		{token.IDENT, "y"},
 		{token.RPAREN, ")"},
+		{token.RIGHT_ARROW, "->"},
+		{token.NUMBER_TYPE, "number"},
 		{token.LBRACE, "{"},
 		{token.RETURN, "return"},
 		{token.IDENT, "x"},
@@ -108,6 +112,14 @@ func TestNextToken(t *testing.T) {
 		{token.FALSE, "false"},
 		{token.SEMICOLON, ";"},
 		{token.RBRACE, "}"},
+		{token.NUMBER, "10"},
+		{token.EQ, "=="},
+		{token.NUMBER, "10"},
+		{token.SEMICOLON, ";"},
+		{token.NUMBER, "10"},
+		{token.NOT_EQ, "!="},
+		{token.NUMBER, "9"},
+		{token.SEMICOLON,";"},
 	}
 
 	l := New(input)
