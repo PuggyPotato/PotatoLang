@@ -50,7 +50,10 @@ const (
 	MUT = "MUT"
 
 	// Types
-	NUMBER_TYPE = "NUMBER"
+	NUMBER_TYPE = "NUMBER_TYPE"
+	STRING_TYPE = "STRING_TYPE"
+	ERROR_TYPE = "ERROR_TYPE"
+	BOOLEAN_TYPE = "BOOLEAN_TYPE"
 )
 
 var keywords = map[string] TokenType {
@@ -63,6 +66,9 @@ var keywords = map[string] TokenType {
 	"return": RETURN,
 	"mut": MUT,
 	"number": NUMBER_TYPE,
+	"bool": BOOLEAN_TYPE,
+	"string": STRING_TYPE,
+	"error": ERROR_TYPE,
 }
 
 func LookupIdent(ident string) TokenType {
