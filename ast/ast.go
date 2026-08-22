@@ -299,3 +299,11 @@ func (ce *CallExpression) String() string {
 
 	return out.String()
 }
+
+type NilLiteral struct {
+	Token token.Token // the nil token 
+}
+
+func (nl *NilLiteral) expressionNode() {}
+func (nl *NilLiteral) TokenLiteral() string { return nl.Token.Literal }
+func (nl *NilLiteral) String() string { return nl.Token.Literal }

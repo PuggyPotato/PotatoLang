@@ -198,7 +198,6 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 		stmt.ReturnValues = append(stmt.ReturnValues, val)
 	}
 
-	// TODO : skipping the expression until encountering a semicolon
 	for !p.curTokenIs(token.SEMICOLON) {
 		p.NextToken()
 	}

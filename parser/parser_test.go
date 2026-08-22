@@ -8,41 +8,47 @@ import (
 )
 
 func TestLetStatements(t *testing.T) {
-	input := `
-	let x = 5;
-	let y = 67.67;
-	let mut z = 50;
-	let a,mut b = 50, 59.42;
-	let mut c,_ = 90.42, 50.40;
-	`
-
-	l := lexer.New(input)
-	p := New(l)
-
-	program := p.ParseProgram()
-	checkParserErrors(t, p)
-	
-	if program == nil {
-		t.Fatalf("ParseProgram() returned nil.")
-	}
-	if len(program.Statements) != 5 {
-		t.Fatalf("program.Statements does not contain 5 statements. got=%d", len(program.Statements))
-	}
-
 	tests := []struct {
+		input string
 		expectedIdentifier []string
+		expectedValue []any
 	} {
-		{[]string{"x"}},
-		{[]string{"y"}},
-		{[]string{"z"}},
-		{[]string{"a", "b"}},
-		{[]string{"c", "_"}},
+		{"let x = 5;", []string{"x"}, []any{5}},
+		{"let y = 67.67;", []string{"y"}, []any{67.67}},
+		{"let mut z = 50;", []string{"z"}, []any{50}},
+		{"let a, mut b = 50, 59.42;", []string{"a", "b"}, []any{50, 59.42}},
+		{"let mut c, _ = 90.42, 50.40;", []string{"c", "_"}, []any{90.42, 50.40}},
 	}
 
-	for i, tt := range tests {
-		stmt := program.Statements[i]
-		if !testLetStatement(t, stmt, tt.expectedIdentifier) {
-			return
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statements. got=%d", len(program.Statements))
+		}
+
+		stmt, ok := program.Statements[0].(*ast.LetStatement)
+		if !ok {
+			t.Fatalf("program.Statements[0] is not ast.LetStatement. got=%T", program.Statements[0])
+		}
+		
+		for i, expectedName := range tt.expectedIdentifier {
+			if stmt.Names[i].Value != expectedName {
+				t.Errorf("identifier wrong. want=%q got=%q", expectedName, stmt.Names[i].Value)
+			}
+		}
+
+		if len(stmt.Values) != len(tt.expectedValue) {
+			t.Fatalf("wrong number of values. want=%d, got=%d", len(tt.expectedValue), len(stmt.Values))
+		}
+
+		for i, expectedVal := range tt.expectedValue {
+			if stmt.Values[i] != expectedVal {
+				testLiteralExpression(t, stmt.Values[i], expectedVal)
+			}
 		}
 	}
 }
