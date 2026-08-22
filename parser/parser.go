@@ -11,6 +11,7 @@ import (
 const (
 	_ int = iota
 	LOWEST
+	ASSIGN // =
 	EQUALS // ==
 	LESSGREATER // > OR <
 	SUM // +
@@ -20,6 +21,7 @@ const (
 )
 
 var precedences = map[token.TokenType]int {
+	token.ASSIGN: ASSIGN,
 	token.EQ: EQUALS,
 	token.NOT_EQ: EQUALS,
 	token.LT: LESSGREATER,
@@ -119,6 +121,9 @@ func (p *Parser) parseStatement() ast.Statement {
 		case token.RETURN:
 			return p.parseReturnStatement()
 		default:
+			if p.curTokenIs(token.IDENT) && (p.peekTokenIs(token.ASSIGN) || p.peekTokenIs(token.COMMA)) {
+				return p.parseAssignStatement()
+			}
 			return p.parseExpressionStatement()
 	}
 }
@@ -210,6 +215,15 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	val := p.parseExpression(LOWEST)
 	if val != nil {
 		stmt.ReturnValues = append(stmt.ReturnValues, val)
+	}
+
+	for p.peekTokenIs(token.COMMA) {
+		p.NextToken() // move to ',' token 
+		p.NextToken() // move to the next value's first token
+		val := p.parseExpression(LOWEST)
+		if val != nil {
+			stmt.ReturnValues = append(stmt.ReturnValues, val)
+		}
 	}
 
 	if p.peekTokenIs(token.SEMICOLON) {
@@ -524,4 +538,43 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 
 func (p *Parser) parseNil() ast.Expression {
 	return &ast.NumberLiteral{Token: p.curToken}
+}
+
+func (p *Parser) parseAssignStatement() *ast.AssignStatement {
+	stmt := &ast.AssignStatement{Token: p.curToken}
+	stmt.Names = []*ast.Identifier{}
+
+	for {
+		ident := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal }
+		stmt.Names = append(stmt.Names, ident)
+
+		if p.peekTokenIs(token.COMMA) {
+			p.NextToken()
+			p.NextToken()
+			continue
+		}
+
+		if p.expectPeek(token.ASSIGN) {
+			break
+		}
+
+		return nil
+	}
+
+	p.NextToken()
+	val := p.parseExpression(LOWEST)
+	stmt.Values = append(stmt.Values, val)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.NextToken()
+		p.NextToken()
+		val := p.parseExpression(LOWEST)
+		stmt.Values = append(stmt.Values, val)
+	}
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.NextToken()
+	}
+
+	return stmt
 }

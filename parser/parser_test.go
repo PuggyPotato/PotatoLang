@@ -755,3 +755,50 @@ func TestCallExpression(t *testing.T) {
     testInfixExpression(t, exp.Arguments[1], 2, "*", 3)
     testInfixExpression(t, exp.Arguments[2], 4, "+", 5)
 }
+
+func TestAssignStatements(t *testing.T) {
+	tests := []struct {
+		input string
+		expectedIdentifier []string
+		expectedValue []any
+	} {
+		{"x = 5;", []string{"x"}, []any{5}},
+		{"y = 67.67;", []string{"y"}, []any{67.67}},
+		{"a, b = 50, 59.42;", []string{"a", "b"}, []any{50, 59.42}},
+		{"c, _ = 90.42, 50.4;", []string{"c", "_"}, []any{90.42, 50.40}},
+	}
+
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statement. got=%d", len(program.Statements))
+		}
+		
+		stmt, ok := program.Statements[0].(*ast.AssignStatement)
+		if !ok {
+			t.Fatalf("program.Statements[0] is not ast.AssignStatement. got=%T", program.Statements[0])
+		}
+		
+		if len(stmt.Names) != len(tt.expectedIdentifier) {
+			t.Fatalf("wrong number of names. want=%d, got=%d", len(tt.expectedIdentifier), len(stmt.Names))
+		}
+		
+		for i, expectedName := range tt.expectedIdentifier {
+			if stmt.Names[i].Value != expectedName {
+				t.Errorf("identifier wrong. want=%q got=%q", expectedName, stmt.Names[i].Value)
+			}
+		}
+		
+		if len(stmt.Values) != len(tt.expectedValue) {
+			t.Fatalf("wrong number of values. want=%d, got=%d", len(tt.expectedValue), len(stmt.Values))
+		}
+		
+		for i, expectedVal := range tt.expectedValue {
+			testLiteralExpression(t, stmt.Values[i], expectedVal)
+		}
+	}
+}

@@ -316,3 +316,35 @@ type NilLiteral struct {
 func (nl *NilLiteral) expressionNode() {}
 func (nl *NilLiteral) TokenLiteral() string { return nl.Token.Literal }
 func (nl *NilLiteral) String() string { return nl.Token.Literal }
+
+type AssignStatement struct {
+	Token token.Token // the '=' token 
+	Names []*Identifier
+	Values []Expression 
+}
+
+func (as *AssignStatement) statementNode() {}
+func (as *AssignStatement) TokenLiteral() string { return as.Token.Literal }
+func (as *AssignStatement) String() string { 
+	var out bytes.Buffer
+
+	names := []string{}
+
+	for _, n := range as.Names {
+		names = append(names, n.String())
+	}
+	out.WriteString(strings.Join(names, ", "))
+
+	out.WriteString(" = ")
+
+	values := []string{}
+	for _, val := range as.Values {
+		if val != nil {
+			values = append(values, val.String())
+		}
+	}
+	out.WriteString(strings.Join(values, ", "))
+	out.WriteString(";")
+
+	return out.String()
+}
