@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"potatolang/ast"
 	"potatolang/lexer"
 	"testing"
@@ -170,4 +171,65 @@ func TestNumberLiteralExpression(t *testing.T) {
 	if literal.TokenLiteral() != "6.7" {
 		t.Errorf("literal.TokenLiteral() is not %s, got=%s", "6.7", literal.TokenLiteral())
 	}
+}
+
+func TestParsingPrefixExpressions(t *testing.T) {
+	prefixTests := []struct {
+		input string
+		operator string
+		value float64
+	} {
+		{"!5;", "!", 5},
+		{"!50.678", "!", 50.678},
+		{"-15;", "-", 15},
+		{"-69.42", "-", 69.420},
+	}
+
+	for _, tt := range prefixTests {
+		l := lexer.New(tt.input)
+		p := New(l)
+		program := p.ParseProgram()
+		checkParserErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program does not have 1 statements. got=%d", len(program.Statements))
+		}
+
+		stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+		if !ok {
+			t.Fatalf("program.Statements[0] not *ast.ExpressionStatement. got=%T", program.Statements[0])
+		}
+
+		exp, ok := stmt.Expression.(*ast.PrefixExpression) 
+		if !ok {
+			t.Fatalf("stmt is not ast.PrefixExpression, got=%T", stmt.Expression)
+		}
+		if exp.Operator != tt.operator {
+			t.Fatalf("exp.Operator is not '%s'. got=%s", tt.operator, exp.Operator)
+		}
+
+		if !testNumberLiteral(t, exp.Right, tt.value) {
+			return
+		}
+	}
+}
+
+func testNumberLiteral(t *testing.T, nl ast.Expression, value float64) bool {
+	num, ok := nl.(*ast.NumberLiteral)
+	if !ok {
+		t.Errorf("nl not *ast.NumberLiteral. got=%T", nl)
+		return false
+	}
+
+	if num.Value != value {
+		t.Errorf("num.Value not %g, got=%g", value, num.Value)
+		return false
+	}
+
+	if num.TokenLiteral() != fmt.Sprintf("%g",value) {
+		t.Errorf("num.TokenLiteral not %g, got=%s", value, num.TokenLiteral())
+		return false
+	}
+
+	return true
 }
