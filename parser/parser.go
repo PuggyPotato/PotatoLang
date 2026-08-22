@@ -74,6 +74,8 @@ func New(l *lexer.Lexer) *Parser {
 
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 
+	p.registerPrefix(token.NIL_VALUE, p.parseNil)
+
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
@@ -152,6 +154,18 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		}
 
 		return nil
+	}
+
+	// Parse the value after '='
+	p.NextToken()
+	val := p.parseExpression(LOWEST)
+	stmt.Values = append(stmt.Values, val)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.NextToken()
+		p.NextToken()
+		val := p.parseExpression(LOWEST)
+		stmt.Values = append(stmt.Values, val)
 	}
 
 	for !p.curTokenIs(token.SEMICOLON) {
@@ -494,4 +508,8 @@ func (p *Parser) parseCallArguments() []ast.Expression {
  		return nil
  	}
  	return args
+}
+
+func (p *Parser) parseNil() ast.Expression {
+	return &ast.NumberLiteral{Token: p.curToken}
 }

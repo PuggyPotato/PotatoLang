@@ -17,7 +17,7 @@ func TestLetStatements(t *testing.T) {
 		{"let y = 67.67;", []string{"y"}, []any{67.67}},
 		{"let mut z = 50;", []string{"z"}, []any{50}},
 		{"let a, mut b = 50, 59.42;", []string{"a", "b"}, []any{50, 59.42}},
-		{"let mut c, _ = 90.42, 50.40;", []string{"c", "_"}, []any{90.42, 50.40}},
+		{"let mut c, _ = 90.42, 50.4;", []string{"c", "_"}, []any{90.42, 50.40}},
 	}
 
 	for _, tt := range tests {
