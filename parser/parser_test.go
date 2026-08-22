@@ -33,7 +33,7 @@ func TestLetStatements(t *testing.T) {
 		{[]string{"y"}},
 		{[]string{"z"}},
 		{[]string{"a", "b"}},
-		{[]string{"a", "_"}},
+		{[]string{"c", "_"}},
 	}
 
 	for i, tt := range tests {
@@ -65,7 +65,7 @@ func testLetStatement(t *testing.T, s ast.Statement, names []string) bool {
 		}
 
 		if letStmt.Names[i].TokenLiteral() != name {
-			t.Errorf("letStmt.Names[%d].TokenLiteral() not '%s', got=%s", i, name, letStmt.Names[i].Value)
+			t.Errorf("letStmt.Names[%d].TokenLiteral() not '%s', got=%s", i, name, letStmt.Names[i].TokenLiteral())
 		}
 	}
 	return true
