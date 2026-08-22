@@ -177,12 +177,14 @@ func TestParsingPrefixExpressions(t *testing.T) {
 	prefixTests := []struct {
 		input string
 		operator string
-		value float64
+		value interface{}
 	} {
 		{"!5;", "!", 5},
 		{"!50.678", "!", 50.678},
 		{"-15;", "-", 15},
 		{"-69.42", "-", 69.420},
+		{"!true;", "!", true},
+		{"!false;", "!", false},
 	}
 
 	for _, tt := range prefixTests {
@@ -208,7 +210,7 @@ func TestParsingPrefixExpressions(t *testing.T) {
 			t.Fatalf("exp.Operator is not '%s'. got=%s", tt.operator, exp.Operator)
 		}
 
-		if !testNumberLiteral(t, exp.Right, tt.value) {
+		if !testLiteralExpression(t, exp.Right, tt.value) {
 			return
 		}
 	}
@@ -234,12 +236,12 @@ func testNumberLiteral(t *testing.T, nl ast.Expression, value float64) bool {
 	return true
 }
 
-func TestParseInfixExpression(t *testing.T) {
+func TestParsingInfixExpression(t *testing.T) {
 	infixTests := []struct{
 		input string
-		leftValue float64
+		leftValue interface{}
 		operator string
-		rightValue float64
+		rightValue interface{}
 	} {
 		{"5.6 + 5.2;", 5.6, "+", 5.2},
 		{"5 - 5;", 5, "-", 5},
@@ -249,6 +251,9 @@ func TestParseInfixExpression(t *testing.T) {
 		{"5 < 5;", 5, "<", 5},
 		{"5 == 5;", 5, "==", 5},
 		{"5 != 5;", 5, "!=", 5},
+		{"true == true", true, "==", true},
+		{"true != false", true, "!=", false},
+		{"false == false", false, "==", false},
 	}
 
 	for _, tt := range infixTests {
@@ -271,7 +276,7 @@ func TestParseInfixExpression(t *testing.T) {
 			t.Fatalf("exp is not ast.InfixExpression. got=%T", stmt.Expression)
 		}
 
-		if !testNumberLiteral(t, exp.Left, tt.leftValue) {
+		if !testLiteralExpression(t, exp.Left, tt.leftValue) {
 			return
 		}
 
@@ -279,7 +284,7 @@ func TestParseInfixExpression(t *testing.T) {
 			t.Fatalf("exp.Operator is not '%s'. got=%s", tt.operator, exp.Operator)
 		}
 
-		if !testNumberLiteral(t, exp.Right, tt.rightValue) {
+		if !testLiteralExpression(t, exp.Right, tt.rightValue) {
 			return 
 		}
 		
