@@ -168,7 +168,7 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 		stmt.Values = append(stmt.Values, val)
 	}
 
-	for !p.curTokenIs(token.SEMICOLON) {
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.NextToken()
 	}
 
@@ -212,7 +212,7 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 		stmt.ReturnValues = append(stmt.ReturnValues, val)
 	}
 
-	for !p.curTokenIs(token.SEMICOLON) {
+	if p.peekTokenIs(token.SEMICOLON) {
 		p.NextToken()
 	}
 
