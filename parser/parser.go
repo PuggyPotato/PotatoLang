@@ -422,8 +422,14 @@ func (p *Parser) parseFunctionParameters() []*ast.TypedIdentifier {
 	}
 
 	p.NextToken()
+	
+	isMut := false
+	if p.curTokenIs(token.MUT) {
+		p.NextToken()
+		isMut = true
+	}
 
-	typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal}
+	typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal, IsMut: isMut}
 	if !p.expectPeek(token.COLON) {
 		return nil
 	}
@@ -435,7 +441,13 @@ func (p *Parser) parseFunctionParameters() []*ast.TypedIdentifier {
 	for p.peekTokenIs(token.COMMA) {
 		p.NextToken()
 		p.NextToken()
-		typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal}
+		
+		isMut := false
+		if p.curTokenIs(token.MUT) {
+			p.NextToken()
+			isMut = true
+		}
+		typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal, IsMut: isMut}
 		if !p.expectPeek(token.COLON) {
 			return nil
 		}

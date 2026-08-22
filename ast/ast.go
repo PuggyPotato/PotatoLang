@@ -237,6 +237,7 @@ type TypedIdentifier struct {
 	Token token.Token // the Identifier token e.g. 'x' 
 	Value string // 'a'
 	Type string // number, string, bool
+	IsMut bool
 }
 
 func (ti *TypedIdentifier) expressionNode() {}
@@ -257,8 +258,12 @@ func (fl *FunctionLiteral) String() string {
 
 	// Put all the params into a slice e.g. (a:number, b:number)
 	var params = []string{}
-	for _, p := range fl.Parameters {
-		params = append(params, p.String())
+	for i, p := range fl.Parameters {
+		if fl.Parameters[i].IsMut {
+			params = append(params, "mut " + p.String())
+		} else {
+			params = append(params, p.String())	
+		}
 	}
 
 	// Building the first half, e.g. func something
