@@ -142,3 +142,32 @@ func TestIdentifierExpression(t *testing.T) {
 		t.Errorf("ident.TokenLiteral() not %s, got=%s", "foobar", ident.TokenLiteral())
 	}
 }
+
+func TestNumberLiteralExpression(t *testing.T) {
+	input := "6.7;"
+
+	l := lexer.New(input)
+	p := New(l)
+	program := p.ParseProgram()
+	checkParserErrors(t, p)
+
+	if len(program.Statements) != 1 {
+		t.Fatalf("program does not have enough statements. got=%d", len(program.Statements))
+	}
+
+	stmt, ok := program.Statements[0].(*ast.ExpressionStatement)
+	if !ok {
+		t.Fatalf("program.Statements[0] not *ast.ExpressionStatement. got=%T", program.Statements[0])
+	}
+
+	literal, ok := stmt.Expression.(*ast.NumberLiteral)
+	if !ok {
+		t.Fatalf("stmt.Expression not *ast.NumberLiteral. got=%T", stmt.Expression)
+	}
+	if literal.Value != 6.7 {
+		t.Errorf("literal.Value is not %f, got=%f", 6.7, literal.Value)
+	}
+	if literal.TokenLiteral() != "6.7" {
+		t.Errorf("literal.TokenLiteral() is not %s, got=%s", "6.7", literal.TokenLiteral())
+	}
+}
