@@ -71,6 +71,8 @@ func New(l *lexer.Lexer) *Parser {
 
 	p.registerPrefix(token.IF, p.parseIfExpression)
 
+	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
+
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
@@ -366,4 +368,101 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	}
 
 	return block
+}
+
+func (p *Parser) parseFunctionLiteral() ast.Expression {
+	lit := &ast.FunctionLiteral{Token: p.curToken}
+
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	lit.Parameters = p.parseFunctionParameters()
+
+	// Parse the return arrow if there is one
+	if p.peekTokenIs(token.RIGHT_ARROW) {
+		p.NextToken()
+		lit.ReturnTypes = p.parseReturnTypes()
+	} else {
+		// return zero return types
+		lit.ReturnTypes = []string{}
+	}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil 
+	}
+
+	lit.Body = p.parseBlockStatement()
+
+	return lit
+}
+
+func (p *Parser) parseFunctionParameters() []*ast.TypedIdentifier {
+	typedIdentifiers := []*ast.TypedIdentifier{}
+
+	if p.peekTokenIs(token.RPAREN) {
+		p.NextToken()
+		return typedIdentifiers
+	}
+
+	p.NextToken()
+
+	typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal}
+	if !p.expectPeek(token.COLON) {
+		return nil
+	}
+	p.NextToken()
+	typedIdent.Type = p.curToken.Literal
+
+	typedIdentifiers = append(typedIdentifiers, typedIdent)
+
+	for p.peekTokenIs(token.COMMA) {
+		p.NextToken()
+		p.NextToken()
+		typedIdent := &ast.TypedIdentifier{ Token: p.curToken, Value: p.curToken.Literal}
+		if !p.expectPeek(token.COLON) {
+			return nil
+		}
+		p.NextToken()
+		typedIdent.Type = p.curToken.Literal
+	
+		typedIdentifiers = append(typedIdentifiers, typedIdent)
+	}
+
+	if !p.expectPeek(token.RPAREN) {
+		return nil 
+	}
+
+	return typedIdentifiers
+}
+
+func (p *Parser) parseReturnTypes() []string {
+	returnTypes := []string{}
+
+	p.NextToken()
+
+	if p.curTokenIs(token.LPAREN) {
+		// Handle empty parenthesis
+		if p.peekTokenIs(token.RPAREN) {
+			p.NextToken()
+			return returnTypes
+		}
+	
+	 	p.NextToken()
+		returnTypes = append(returnTypes, p.curToken.Literal)
+
+		for p.peekTokenIs(token.COMMA) {
+			p.NextToken()
+			p.NextToken()
+			returnTypes = append(returnTypes, p.curToken.Literal)
+		}
+
+		// Ensure the return parenthesis is closed correctly
+		if !p.expectPeek(token.RPAREN) {
+			return nil
+		}
+		return returnTypes
+	}
+	returnTypes = append(returnTypes, p.curToken.Literal)
+	return returnTypes
 }

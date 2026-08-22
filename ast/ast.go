@@ -228,3 +228,51 @@ func (bs *BlockStatement) String() string {
 
 	return out.String()
 }
+
+type TypedIdentifier struct {
+	Token token.Token // the Identifier token e.g. 'x' 
+	Value string // 'a'
+	Type string // number, string, bool
+}
+
+func (ti *TypedIdentifier) expressionNode() {}
+func (ti *TypedIdentifier) TokenLiteral() string { return ti.Token.Literal }
+func (ti *TypedIdentifier) String() string { return ti.Value + ": " + ti.Type }
+
+type FunctionLiteral struct {
+	Token token.Token // The 'func' token
+ 	Parameters []*TypedIdentifier
+  	ReturnTypes []string // e.g. ["number", "err"]
+   	Body *BlockStatement
+}
+
+func (fl *FunctionLiteral) expressionNode() {}
+func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
+func (fl *FunctionLiteral) String() string {
+	var out bytes.Buffer
+
+	// Put all the params into a slice e.g. (a:number, b:number)
+	var params = []string{}
+	for _, p := range fl.Parameters {
+		params = append(params, p.String())
+	}
+
+	// Building the first half, e.g. func something
+	out.WriteString(fl.TokenLiteral())
+	out.WriteString("(")
+	out.WriteString(strings.Join(params, ", "))
+	out.WriteString(")")
+
+	if len(fl.ReturnTypes) > 0 {
+		out.WriteString(" -> (")
+		out.WriteString(strings.Join(fl.ReturnTypes, ", "))
+		out.WriteString(")")
+	} else{
+		// write space if no return type
+		out.WriteString(" ")
+	}
+
+	out.WriteString(fl.Body.String())
+	
+	return out.String()
+}
