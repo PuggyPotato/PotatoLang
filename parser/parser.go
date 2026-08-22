@@ -7,12 +7,31 @@ import (
 	"potatolang/token"
 )
 
+const (
+	_ int = iota
+	LOWEST
+	EQUALS // ==
+	LESSGREATER // > OR <
+	SUM // +
+	PRODUCT // *
+	PREFIX // -X OR !X
+	CALL // doSomething(X)
+)
+
+type (
+	prefixParseFn func() ast.Expression
+	infixParseFn func(ast.Expression) ast.Expression
+)
+
 type Parser struct {
 	l *lexer.Lexer
 
 	curToken token.Token
 	peekToken token.Token
 	errors []string
+
+	prefixParseFns map[token.TokenType]prefixParseFn
+	infixParseFns map[token.TokenType]infixParseFn
 }
 
 func New(l *lexer.Lexer) *Parser {
@@ -24,6 +43,10 @@ func New(l *lexer.Lexer) *Parser {
 	// read two token, so curToken and peekToken is set
 	p.NextToken()
 	p.NextToken()
+
+	p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+
+	p.registerPrefix(token.IDENT, p.parseIdentifier)
 
 	return p
 }
@@ -56,7 +79,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		case token.RETURN:
 			return p.parseReturnStatement()
 		default:
-			return nil
+			return p.parseExpressionStatement()
 	}
 }
 
@@ -138,4 +161,38 @@ func (p *Parser) parseReturnStatement() *ast.ReturnStatement {
 	}
 
 	return stmt
+}
+
+func (p *Parser) registerPrefix(tokenType token.TokenType, function prefixParseFn) {
+	p.prefixParseFns[tokenType] = function
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, function infixParseFn) {
+	p.infixParseFns[tokenType] = function
+}
+
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	stmt := &ast.ExpressionStatement{Token: p.curToken}
+
+	stmt.Expression = p.parseExpression(LOWEST)
+
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.NextToken()
+	}
+
+	return stmt
+}
+
+func (p *Parser) parseExpression(precedence int) ast.Expression {
+	prefix := p.prefixParseFns[p.curToken.Type]
+	if prefix == nil {
+		return nil 
+	}
+	leftExp := prefix()
+
+	return leftExp
+}
+
+func (p *Parser) parseIdentifier() ast.Expression {
+	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal }
 }
