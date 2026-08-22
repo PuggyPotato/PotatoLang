@@ -58,7 +58,11 @@ func (ls *LetStatement) String() string {
 
 	var names []string
 	for _, name := range ls.Names {
-		names = append(names, name.Value)
+		if name.IsMut {
+			names = append(names, "mut " + name.Value)
+		} else {
+			names = append(names, name.Value)
+		}
 	}
 	out.WriteString(strings.Join(names, ", "))
 	out.WriteString(" = ")
