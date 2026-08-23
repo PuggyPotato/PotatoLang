@@ -11,6 +11,7 @@ const (
 	NIL_OBJ = "NIL"
 	VOID_OBJ = "VOID"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
+	ERROR_OBJ = "ERROR"
 )
 
 type ObjectType string
@@ -54,3 +55,11 @@ func (rv *ReturnValue) Inspect() string {
 	}
 	return strings.Join(values, ", ")
 }
+
+type Error struct {
+	Message string
+}
+
+func (e *Error) Type() ObjectType { return ERROR_OBJ }
+func (e *Error) Inspect() string { return "ERROR: " + e.Message }
+
