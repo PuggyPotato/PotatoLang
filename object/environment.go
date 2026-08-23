@@ -33,3 +33,24 @@ func (e *Environment) Set(name string, val Object, isMut bool) Object {
 	e.store[name] = Variable{Value: val, IsMut: isMut}
 	return val
 }
+
+func (e *Environment) Reassign(name string, val Object) (Object, bool, bool)  {// return value, exist, ismut
+	variable, ok := e.store[name]
+	
+	if !ok {
+		// check for outer scope
+		if e.outer != nil {
+			return e.outer.Reassign(name, val)
+		}
+		
+		// did not find the identifier
+		return nil, false, false
+	}
+
+	if !variable.IsMut {
+		return nil, true, false
+	}
+
+	e.store[name] = Variable{Value: val, IsMut: true}
+	return val, true, true
+}

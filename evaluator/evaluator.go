@@ -26,6 +26,9 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	case *ast.LetStatement:
 		return EvalLetStatement(node, env)
 
+	case *ast.AssignStatement:
+		return EvalReassignStatement(node, env)
+
 	case *ast.Identifier:
 		return evalIdentifier(node, env)
 
@@ -337,6 +340,57 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 			return evaluated
 		}
 		env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
+	}
+	return VOID
+}
+
+func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) object.Object{
+	if len(node.Names) > 1 && len(node.Values) == 1 {
+		evaluated := Eval(node.Values[0], env)
+		if isError(evaluated) {
+			return evaluated
+		}
+
+		returnVal, ok := evaluated.(*object.ReturnValue)
+		if !ok || len(returnVal.Values) != len(node.Names) {
+			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
+		}
+
+		for i, name := range node.Names {
+			_, exist, isMut := env.Reassign(name.Value, returnVal.Values[i])
+			
+			if !exist {
+				return newError("undefined: %s",name.Value)
+			}
+
+			if !isMut {
+				return newError("%s is not mutable.",name.Value)
+			}
+			
+		}
+		return VOID
+	}
+
+	if len(node.Values) != len(node.Names) {
+		return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(node.Values))
+	}
+
+	for i, val := range node.Values {
+		evaluated := Eval(val, env)
+		if isError(evaluated) {
+			return evaluated
+		}
+		_, exist, isMut := env.Reassign(node.Names[i].Value, evaluated)
+		
+		if !exist {
+			return newError("%s is undefined.",node.Names[i].Value)
+		}
+
+		if !isMut {
+			return newError("%s is not mutable.",node.Names[i].Value)
+		}
+		
+		env.Reassign(node.Names[i].Value, evaluated)
 	}
 	return VOID
 }

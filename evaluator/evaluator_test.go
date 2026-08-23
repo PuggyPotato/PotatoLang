@@ -131,7 +131,7 @@ func TestIfElseExpressions(t *testing.T) {
 		expected []any
 	} {
 		{"if true { return 10; }", []any{10}},
-		{"if true { x = 10;}", []any{VOID}},
+		{"let mut x = 5; if true { x = 10;}", []any{VOID}},
 		{"if false { return 10; }", []any{VOID}},
 		{"if 1 { return 10, 50; }", []any{10, 50}},
 		{"if 1 < 2 { return 10; }", []any{10}},
@@ -258,6 +258,17 @@ func TestErrorHandling(t *testing.T) {
 			"foobar",
 			"identifier not found: foobar",
 		},
+		{
+			"x = 10;",
+			"x is undefined.",
+		},
+		{
+			`
+				let x = 10;
+				x = 5;
+			`,
+			"x is not mutable.",
+		},
 	}
 
 	for _, tt := range tests {
@@ -381,5 +392,21 @@ func checkExpected(t *testing.T, obj object.Object, expectedVal any) {
 			testNilObject(t, obj)
 		case *object.Void:
 			testVoidObject(t, obj)
+	}
+}
+
+func TestReassignment(t *testing.T) {
+	tests := []struct {
+		input string
+		expected float64
+	} {
+		{"let mut x = 5; x = 10; x;", 10},
+		{"let mut x, mut y = 5, 10; x = y; x;", 10},
+		{"let mut x = 5; if true { x = 10.69; } x;", 10.69},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testNumberObject(t, evaluated, tt.expected)
 	}
 }
