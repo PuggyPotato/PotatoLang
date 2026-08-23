@@ -537,7 +537,7 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 }
 
 func (p *Parser) parseNil() ast.Expression {
-	return &ast.NumberLiteral{Token: p.curToken}
+	return &ast.NilLiteral{Token: p.curToken}
 }
 
 func (p *Parser) parseAssignStatement() *ast.AssignStatement {

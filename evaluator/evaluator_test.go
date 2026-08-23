@@ -123,3 +123,112 @@ func TestBangOperator(t *testing.T) {
 		testBooleanObject(t, evaluated, tt.expected)
 	}
 }
+
+func TestIfElseExpressions(t *testing.T) {
+	tests := []struct {
+		input string
+		expected []any
+	} {
+		{"if true { return 10; }", []any{10}},
+		{"if true { x = 10;}", []any{VOID}},
+		{"if false { return 10; }", []any{VOID}},
+		{"if 1 { return 10, 50; }", []any{10, 50}},
+		{"if 1 < 2 { return 10; }", []any{10}},
+		{"if 1 > 2 { return 10.50; }", []any{VOID}},
+		{"if 1 > 2 { return 10; } else { return 20.50; }", []any{20.50}},
+		{"if 1 < 2 { return 50.50; } else { return 20; }", []any{50.50}},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		if len(tt.expected) == 1 && tt.expected[0] == VOID {
+			testVoidObject(t, evaluated)
+			continue
+		}
+
+		evaluatedVal, ok := evaluated.(*object.ReturnValue)
+		if !ok {
+			t.Fatalf("evaluated not *object.ReturnValue, got=%T (%+v)", evaluated, evaluated)
+		}
+
+		for i, expectedVal := range tt.expected {
+			switch expected := expectedVal.(type) {
+				case int:
+					testNumberObject(t, evaluatedVal.Values[i], float64(expected))
+				case float64:
+					testNumberObject(t, evaluatedVal.Values[i], expected)
+				case *object.Nil:
+					testNilObject(t, evaluatedVal.Values[i])
+				case *object.Void:
+					testVoidObject(t, evaluatedVal.Values[i])
+			}
+		}
+	}
+}
+
+func testVoidObject(t *testing.T, obj object.Object) bool {
+	if obj != VOID {
+		t.Errorf("object is not VOID. got=%T (%+v)", obj, obj)
+		return false
+	}
+
+	return true
+}
+
+func testNilObject(t *testing.T, obj object.Object) bool {
+	if obj != NIL {
+		t.Errorf("object is not Nil. got=%T (%+v)", obj, obj)
+		return false
+	}
+
+	return true
+}
+
+func TestReturnStatements(t *testing.T) {
+	tests := []struct {
+		input string 
+		expected []any
+	} {
+		{"return 10.6, 50;", []any{10.6, 50}},
+		{"return 102; return 9;", []any{102}},
+		{"return 2 * 5, 100.50; return 9;", []any{10, 100.50}},
+		{"return 2 * 7, nil; return 9;", []any{14, NIL}},
+
+		{
+			`if 10 > 1 {
+				if 10 > 1 {
+					return 10;
+				}
+				return 1;
+			}`, []any{10},
+		},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		if len(tt.expected) == 1 && tt.expected[0] == VOID {
+			testVoidObject(t, evaluated)
+			continue
+		}
+
+		evaluatedVal, ok := evaluated.(*object.ReturnValue)
+		if !ok {
+			t.Fatalf("evaluated not *object.ReturnValue, got=%T (%+v)", evaluated, evaluated)
+		}
+
+		for i, expectedVal := range tt.expected {
+			switch expected := expectedVal.(type) {
+				case int:
+					testNumberObject(t, evaluatedVal.Values[i], float64(expected))
+				case float64:
+					testNumberObject(t, evaluatedVal.Values[i], expected)
+				case *object.Nil:
+					testNilObject(t, evaluatedVal.Values[i])
+				case *object.Void:
+					testVoidObject(t, evaluatedVal.Values[i])
+			}
+		}
+	}
+}
