@@ -2,11 +2,18 @@ package object
 
 type Environment struct {
 	store map[string]Variable
+	outer *Environment
 }
 
 type Variable struct {
 	Value Object
 	IsMut bool
+}
+
+func NewEnclosedEnvironment(outer *Environment) *Environment {
+	env := NewEnvironment()
+	env.outer = outer
+	return env
 }
 
 func NewEnvironment() *Environment {
@@ -16,6 +23,9 @@ func NewEnvironment() *Environment {
 
 func (e *Environment) Get(name string) (Object, bool) {
 	obj, ok := e.store[name]
+	if !ok && e.outer != nil {
+		obj.Value, ok = e.outer.Get(name)
+	}
 	return obj.Value, ok
 }
 

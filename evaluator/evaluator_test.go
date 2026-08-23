@@ -154,16 +154,7 @@ func TestIfElseExpressions(t *testing.T) {
 		}
 
 		for i, expectedVal := range tt.expected {
-			switch expected := expectedVal.(type) {
-				case int:
-					testNumberObject(t, evaluatedVal.Values[i], float64(expected))
-				case float64:
-					testNumberObject(t, evaluatedVal.Values[i], expected)
-				case *object.Nil:
-					testNilObject(t, evaluatedVal.Values[i])
-				case *object.Void:
-					testVoidObject(t, evaluatedVal.Values[i])
-			}
+			checkExpected(t, evaluatedVal.Values[i], expectedVal)
 		}
 	}
 }
@@ -220,16 +211,7 @@ func TestReturnStatements(t *testing.T) {
 		}
 
 		for i, expectedVal := range tt.expected {
-			switch expected := expectedVal.(type) {
-				case int:
-					testNumberObject(t, evaluatedVal.Values[i], float64(expected))
-				case float64:
-					testNumberObject(t, evaluatedVal.Values[i], expected)
-				case *object.Nil:
-					testNilObject(t, evaluatedVal.Values[i])
-				case *object.Void:
-					testVoidObject(t, evaluatedVal.Values[i])
-			}
+			checkExpected(t, evaluatedVal.Values[i], expectedVal)
 		}
 	}
 }
@@ -307,5 +289,97 @@ func TestLetStatements(t *testing.T) {
 
 	for _, tt := range tests {
 		testNumberObject(t, testEval(tt.input), tt.expected)
+	}
+}
+
+func TestFunctionObject(t *testing.T) {
+	input := "func(mut x: number) -> number { return x + 2; };"
+
+	evaluated := testEval(input)
+	function, ok := evaluated.(*object.Function)
+	if !ok {
+		t.Fatalf("object is not Function. got=%T (%+v)", evaluated, evaluated)
+	}
+
+	if len(function.Parameters) != 1 {
+		t.Fatalf("function has wrong parameters. Parameters=%+v", function.Parameters)
+	}
+
+	if function.Parameters[0].Value != "x" {
+		t.Fatalf("value is not 'x'. got=%q", function.Parameters[0].Value)
+	}
+
+	if function.Parameters[0].Type != "number" {
+		t.Fatalf("type is not 'number'. got=%q", function.Parameters[0].Type)
+	}
+
+	if function.Parameters[0].IsMut != true {
+		t.Fatalf("isMut is not true. got=%t", function.Parameters[0].IsMut)
+	}
+
+	if len(function.ReturnTypes) != 1 {
+		t.Fatalf("function has wrong returnTypes. returnTypes=%+v", function.ReturnTypes)
+	}
+
+	if function.ReturnTypes[0] != "number" {
+		t.Fatalf("returnType is not 'number'. got=%s", function.ReturnTypes[0])
+	}
+
+	expectedBody := "return (x + 2);"
+
+	if function.Body.String() != expectedBody {
+		t.Fatalf("body is not %q. got=%q", expectedBody, function.Body.String())
+	}
+}
+
+func TestFunctionApplication(t *testing.T) {
+	tests := []struct {
+		input string
+		expected []any
+	} {
+		
+		{"let identity = func(x: number) { x; }; identity(5);", []any{VOID}},
+		{"let identity = func(x: number) -> number { return x; }; identity(5);", []any{5}},
+		{"let double = func(x: number) -> (number, error) { return x * 2, nil; }; double(5);", []any{10, nil}},
+		{"let add = func(x: number, y: number) -> number { return x + y; }; add(5, 5);", []any{10}},
+		{"let add = func(x: number, y: number) -> number { return x + y; }; add(5 + 5, add(5, 5));", []any{20}},
+		{"func(x: number) -> number { return x; }(5)", []any{5}},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		if len(tt.expected) == 1 && tt.expected[0] == VOID {
+			testVoidObject(t, evaluated)
+			continue
+		}
+
+		if len(tt.expected) == 1 {
+			checkExpected(t, evaluated, tt.expected[0])
+			continue
+		}
+
+		evaluatedVal, ok := evaluated.(*object.ReturnValue)
+		if !ok {
+			t.Errorf("evaluated not *object.ReturnValue, got=%T (%+v)", evaluated, evaluated)
+			continue
+		}
+
+		for i, expectedVal := range tt.expected {
+			checkExpected(t, evaluatedVal.Values[i], expectedVal)
+		}
+	}
+}
+
+func checkExpected(t *testing.T, obj object.Object, expectedVal any) {
+	switch expected := expectedVal.(type) {
+		case int:
+			testNumberObject(t, obj, float64(expected))
+		case float64:
+			testNumberObject(t, obj, expected)
+		case *object.Nil:
+			testNilObject(t, obj)
+		case *object.Void:
+			testVoidObject(t, obj)
 	}
 }

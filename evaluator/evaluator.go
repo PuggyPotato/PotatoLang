@@ -7,81 +7,93 @@ import (
 )
 
 var (
-	TRUE = &object.Boolean{Value: true}
+	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
-	NIL = &object.Nil{}
-	VOID = &object.Void{}
+	NIL   = &object.Nil{}
+	VOID  = &object.Void{}
 )
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
 
-		// Statements
-		case *ast.Program:
-			return evalProgram(node, env)
-			
-		case *ast.ExpressionStatement:
-			return Eval(node.Expression, env)
+	// Statements
+	case *ast.Program:
+		return evalProgram(node, env)
 
-		case *ast.LetStatement:
-			for i, val := range node.Values {
-				evaluated := Eval(val, env)
-				if isError(evaluated) {
-					return evaluated
-				}
-				env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
+	case *ast.ExpressionStatement:
+		return Eval(node.Expression, env)
+
+	case *ast.LetStatement:
+		return EvalLetStatement(node, env)
+
+	case *ast.Identifier:
+		return evalIdentifier(node, env)
+
+	// Expressions
+	case *ast.NumberLiteral:
+		return &object.Number{Value: node.Value}
+
+	case *ast.Boolean:
+		return nativeBoolToBooleanObject(node.Value)
+
+	case *ast.PrefixExpression:
+		right := Eval(node.Right, env)
+		if isError(right) {
+			return right
+		}
+		return evalPrefixExpression(node.Operator, right)
+
+	case *ast.InfixExpression:
+		left := Eval(node.Left, env)
+		if isError(left) {
+			return left
+		}
+		right := Eval(node.Right, env)
+		if isError(right) {
+			return right
+		}
+		return evalInfixExpression(node.Operator, left, right)
+
+	case *ast.BlockStatement:
+		return evalBlockStatement(node, env)
+
+	case *ast.IfExpression:
+		return evalIfExpression(node, env)
+
+	case *ast.ReturnStatement:
+		var evaluatedVals []object.Object
+
+		for _, val := range node.ReturnValues {
+			evaluated := Eval(val, env)
+			if isError(evaluated) {
+				return evaluated
 			}
+			evaluatedVals = append(evaluatedVals, evaluated)
+		}
 
-		case *ast.Identifier:
-			return evalIdentifier(node, env)
+		return &object.ReturnValue{Values: evaluatedVals}
 
-		// Expressions
-		case *ast.NumberLiteral:
-			return &object.Number{Value: node.Value}
-			
-		case *ast.Boolean:
-			return nativeBoolToBooleanObject(node.Value)
-			
-		case *ast.PrefixExpression:
-			right := Eval(node.Right, env)
-			if isError(right) {
-				return right
-			}
-			return evalPrefixExpression(node.Operator, right)
-			
-		case *ast.InfixExpression:
-			left := Eval(node.Left, env)
-			if isError(left) {
-				return left
-			}
-			right := Eval(node.Right, env)
-			if isError(right) {
-				return right
-			}
-			return evalInfixExpression(node.Operator, left, right)
-			
-		case *ast.BlockStatement:
-			return evalBlockStatement(node, env)
-			
-		case *ast.IfExpression:
-			return evalIfExpression(node, env)
+	case *ast.NilLiteral:
+		return NIL
 
-		case *ast.ReturnStatement:
-			var evaluatedVals []object.Object
+	case *ast.FunctionLiteral:
+		params := node.Parameters
+		body := node.Body
+		returnTypes := node.ReturnTypes
+		return &object.Function{Parameters: params, Env: env, Body: body, ReturnTypes: returnTypes}
 
-			for _, val := range node.ReturnValues {
-				evaluated := Eval(val, env)
-				if isError(evaluated) {
-					return evaluated
-				}
-				evaluatedVals = append(evaluatedVals, evaluated)
-			}
+	case *ast.CallExpression:
+		function := Eval(node.Function, env)
+		if isError(function) {
+			return function
+		}
+		args := evalExpressions(node.Arguments, env)
+		if len(args) == 1 && isError(args[0]) {
+			return args[0]
+		}
 
-			return &object.ReturnValue{Values: evaluatedVals}
+		return applyFunction(function, args)
 
-		case *ast.NilLiteral:
-			return NIL
-			
 	}
 	return nil
 }
@@ -93,10 +105,10 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 		result = Eval(statement, env)
 
 		switch result := result.(type) {
-			case *object.ReturnValue:
-				return result
-			case *object.Error:
-				return result
+		case *object.ReturnValue:
+			return result
+		case *object.Error:
+			return result
 		}
 	}
 
@@ -123,33 +135,33 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
-	} 
+	}
 	return FALSE
 }
 
 func evalPrefixExpression(operator string, right object.Object) object.Object {
 	switch operator {
-		case "!":
-			return evalBangOperatorExpression(right)
-		case "-":
-			return evalMinusOperatorExpression(right)
-		default:
-			return VOID
+	case "!":
+		return evalBangOperatorExpression(right)
+	case "-":
+		return evalMinusOperatorExpression(right)
+	default:
+		return VOID
 	}
 }
 
 func evalBangOperatorExpression(right object.Object) object.Object {
 	switch right {
-		case TRUE:
-			return FALSE
-		case FALSE:
-			return TRUE
-		case NIL:
-			return TRUE
-		case VOID:
-			return TRUE
-		default:
-			return FALSE
+	case TRUE:
+		return FALSE
+	case FALSE:
+		return TRUE
+	case NIL:
+		return TRUE
+	case VOID:
+		return TRUE
+	default:
+		return FALSE
 	}
 }
 
@@ -164,16 +176,16 @@ func evalMinusOperatorExpression(right object.Object) object.Object {
 
 func evalInfixExpression(operator string, left object.Object, right object.Object) object.Object {
 	switch {
-		case left.Type() != right.Type():
-			return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
-		case left.Type() == object.NUMBER_OBJ && right.Type() == object.NUMBER_OBJ:
-			return evalNumberInfixExpression(operator, left, right)
-		case operator == "==":
-			return nativeBoolToBooleanObject(left == right)
-		case operator == "!=":
-			return nativeBoolToBooleanObject(left != right)
-		default:
-			return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	case left.Type() != right.Type():
+		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
+	case left.Type() == object.NUMBER_OBJ && right.Type() == object.NUMBER_OBJ:
+		return evalNumberInfixExpression(operator, left, right)
+	case operator == "==":
+		return nativeBoolToBooleanObject(left == right)
+	case operator == "!=":
+		return nativeBoolToBooleanObject(left != right)
+	default:
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
 }
 
@@ -182,25 +194,38 @@ func evalNumberInfixExpression(operator string, left object.Object, right object
 	rightVal := right.(*object.Number).Value
 
 	switch operator {
-		case "+":
-			return &object.Number{Value: leftVal + rightVal }
-		case "-":
-			return &object.Number{Value: leftVal - rightVal }
-		case "*":
-			return &object.Number{Value: leftVal * rightVal }
-		case "/":
-			return &object.Number{Value: leftVal / rightVal }
-		case "<":
-			return nativeBoolToBooleanObject(leftVal < rightVal)
-		case ">":
-			return nativeBoolToBooleanObject(leftVal > rightVal)
-		case "==":
-			return nativeBoolToBooleanObject(leftVal == rightVal)
-		case "!=":
-			return nativeBoolToBooleanObject(leftVal != rightVal)
-		default:
-			return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+	case "+":
+		return &object.Number{Value: leftVal + rightVal}
+	case "-":
+		return &object.Number{Value: leftVal - rightVal}
+	case "*":
+		return &object.Number{Value: leftVal * rightVal}
+	case "/":
+		return &object.Number{Value: leftVal / rightVal}
+	case "<":
+		return nativeBoolToBooleanObject(leftVal < rightVal)
+	case ">":
+		return nativeBoolToBooleanObject(leftVal > rightVal)
+	case "==":
+		return nativeBoolToBooleanObject(leftVal == rightVal)
+	case "!=":
+		return nativeBoolToBooleanObject(leftVal != rightVal)
+	default:
+		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
+}
+
+func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
+	var result []object.Object
+	for _, e := range exps {
+		evaluated := Eval(e, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}
+		}
+		result = append(result, evaluated)
+	}
+
+	return result
 }
 
 func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
@@ -220,16 +245,16 @@ func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Obje
 
 func isTruthy(obj object.Object) bool {
 	switch obj {
-		case NIL:
-			return false
-		case VOID:
-			return false
-		case TRUE:
-			return true
-		case FALSE:
-			return false
-		default: 
-			return true
+	case NIL:
+		return false
+	case VOID:
+		return false
+	case TRUE:
+		return true
+	case FALSE:
+		return false
+	default:
+		return true
 	}
 }
 
@@ -247,8 +272,71 @@ func isError(obj object.Object) bool {
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
 	val, ok := env.Get(node.Value)
 	if !ok {
-		return newError("identifier not found: %s", node.Value )
+		return newError("identifier not found: %s", node.Value)
 	}
 
 	return val
+}
+
+func applyFunction(fn object.Object, args []object.Object) object.Object {
+	function, ok := fn.(*object.Function)
+	if !ok {
+		return newError("not a function: %s", fn.Type())
+	}
+
+	extendedEnv := extendFunctionEnv(function, args)
+	evaluated := Eval(function.Body, extendedEnv)
+	return unwrapReturnValue(evaluated)
+}
+
+func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
+	env := object.NewEnclosedEnvironment(fn.Env)
+
+	for paramIdx, param := range fn.Parameters {
+		env.Set(param.Value, args[paramIdx], param.IsMut)
+	}
+
+	return env
+}
+
+func unwrapReturnValue(obj object.Object) object.Object {
+	if returnValues, ok := obj.(*object.ReturnValue); ok {
+		if len(returnValues.Values) == 1 {
+			return returnValues.Values[0]
+		}
+	}
+	
+	return obj
+}
+
+func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Object{
+	if len(node.Names) > 1 && len(node.Values) == 1 {
+		evaluated := Eval(node.Values[0], env)
+		if isError(evaluated) {
+			return evaluated
+		}
+
+		returnVal, ok := evaluated.(*object.ReturnValue)
+		if !ok || len(returnVal.Values) != len(node.Names) {
+			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
+		}
+
+		for i, name := range node.Names {
+			env.Set(name.Value, returnVal.Values[i], name.IsMut)
+		}
+		return VOID
+	}
+
+	if len(node.Values) != len(node.Names) {
+		return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(node.Values))
+	}
+
+	for i, val := range node.Values {
+		evaluated := Eval(val, env)
+		if isError(evaluated) {
+			return evaluated
+		}
+		env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
+	}
+	return VOID
 }

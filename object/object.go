@@ -1,7 +1,9 @@
 package object
 
 import (
+	"bytes"
 	"fmt"
+	"potatolang/ast"
 	"strings"
 )
 
@@ -12,6 +14,7 @@ const (
 	VOID_OBJ = "VOID"
 	RETURN_VALUE_OBJ = "RETURN_VALUE"
 	ERROR_OBJ = "ERROR"
+	FUNCTION_OBJ = "FUNCTION"
 )
 
 type ObjectType string
@@ -63,3 +66,42 @@ type Error struct {
 func (e *Error) Type() ObjectType { return ERROR_OBJ }
 func (e *Error) Inspect() string { return "ERROR: " + e.Message }
 
+type Function struct {
+	Parameters []*ast.TypedIdentifier
+	ReturnTypes []string 
+	Body *ast.BlockStatement
+	Env *Environment
+}
+
+func (f *Function) Type() ObjectType { return FUNCTION_OBJ }
+func (f *Function) Inspect() string {
+	var out bytes.Buffer
+
+	out.WriteString("func")
+	out.WriteString("(")
+	for i, param := range f.Parameters {
+		if f.Parameters[i].IsMut {
+			out.WriteString("mut ")
+		}
+		out.WriteString(param.String())
+		out.WriteString(": ")
+		out.WriteString(f.Parameters[i].Type)
+		out.WriteString(", ")
+	}
+
+	out.WriteString(")")
+	
+	if len(f.ReturnTypes) >= 1 {
+		returnTypes := []string{}
+		out.WriteString("-> ")
+		for _, returnType := range f.ReturnTypes {
+			returnTypes = append(returnTypes, returnType)
+		}
+		out.WriteString(strings.Join(returnTypes, ", "))
+	}
+	out.WriteString("{\n")
+	out.WriteString(f.Body.String())
+	out.WriteString("\n}")
+
+	return out.String()
+}
