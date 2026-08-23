@@ -29,7 +29,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 				if isError(evaluated) {
 					return evaluated
 				}
-				env.Set(node.Names[i].Value, evaluated)
+				env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
 			}
 
 		case *ast.Identifier:
