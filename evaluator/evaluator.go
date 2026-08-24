@@ -322,7 +322,7 @@ func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Enviro
 	env := object.NewEnclosedEnvironment(fn.Env)
 
 	for paramIdx, param := range fn.Parameters {
-		env.Set(param.Value, args[paramIdx], param.IsMut)
+		env.Set(param.Value, args[paramIdx], param.IsMut, param.Type)
 	}
 
 	return env
@@ -359,9 +359,8 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
 		}
 		
-
 		for i, name := range node.Names {
-			env.Set(name.Value, returnVal.Values[i], name.IsMut)
+			env.Set(name.Value, returnVal.Values[i], name.IsMut, string(returnVal.Values[i].Type()))
 		}
 		return VOID
 	}
@@ -386,7 +385,7 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 			}
 		}
 		
-		env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
+		env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut, string(evaluated.Type()))
 	}
 	return VOID
 }
@@ -399,12 +398,21 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 		}
 
 		returnVal, ok := evaluated.(*object.ReturnValue)
-		if !ok || len(returnVal.Values) != len(node.Names) {
+		if !ok { // returnVal = nil
+			// function declaration should not be able to be unpacked e.g. a,b = func() {}
+			if _, isFunc := evaluated.(*object.Function); isFunc {
+				return newError("function declaration cannot be unpacked")
+			}
+			// used for common error with 1 value, when returnVal fails  
+			return newError("assignment mismatch: %d variables but %d value", len(node.Names), 1)
+		}
+
+		if len(returnVal.Values) != len(node.Names) {
 			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
 		}
 
 		for i, name := range node.Names {
-			_, exist, isMut := env.Reassign(name.Value, returnVal.Values[i])
+			variableName, exist, isMut, isSameType := env.Reassign(name.Value, returnVal.Values[i], string(returnVal.Values[i].Type()))
 			
 			if !exist {
 				return newError("undefined: %s",name.Value)
@@ -412,6 +420,10 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 
 			if !isMut {
 				return newError("%s is not mutable.",name.Value)
+			}
+
+			if !isSameType {
+				return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
 			}
 			
 		}
@@ -427,7 +439,7 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 		if isError(evaluated) {
 			return evaluated
 		}
-		_, exist, isMut := env.Reassign(node.Names[i].Value, evaluated)
+		variableName, exist, isMut, isSameType := env.Reassign(node.Names[i].Value, evaluated, string(evaluated.Type()))
 		
 		if !exist {
 			return newError("%s is undefined.",node.Names[i].Value)
@@ -436,8 +448,12 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 		if !isMut {
 			return newError("%s is not mutable.",node.Names[i].Value)
 		}
+
+		if !isSameType {
+			return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
+		}
 		
-		env.Reassign(node.Names[i].Value, evaluated)
+		env.Reassign(node.Names[i].Value, evaluated, string(evaluated.Type()))
 	}
 	return VOID
 }

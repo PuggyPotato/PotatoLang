@@ -7,6 +7,7 @@ type Environment struct {
 
 type Variable struct {
 	Value Object
+	VariableType string
 	IsMut bool
 }
 
@@ -29,28 +30,32 @@ func (e *Environment) Get(name string) (Object, bool) {
 	return obj.Value, ok
 }
 
-func (e *Environment) Set(name string, val Object, isMut bool) Object {
-	e.store[name] = Variable{Value: val, IsMut: isMut}
+func (e *Environment) Set(name string, val Object, isMut bool, variableType string) Object {
+	e.store[name] = Variable{Value: val, IsMut: isMut, VariableType: variableType }
 	return val
 }
 
-func (e *Environment) Reassign(name string, val Object) (Object, bool, bool)  {// return value, exist, ismut
+func (e *Environment) Reassign(name string, val Object, variableType string) (Object, bool, bool, bool)  {// return value, exist, ismut, isSameType
 	variable, ok := e.store[name]
 	
 	if !ok {
 		// check for outer scope
 		if e.outer != nil {
-			return e.outer.Reassign(name, val)
+			return e.outer.Reassign(name, val, variableType)
 		}
 		
 		// did not find the identifier
-		return nil, false, false
+		return nil, false, false, false
 	}
 
 	if !variable.IsMut {
-		return nil, true, false
+		return variable.Value, true, false, false // found but is not mutable
 	}
 
-	e.store[name] = Variable{Value: val, IsMut: true}
-	return val, true, true
+	if variable.VariableType != variableType {
+		return variable.Value, true, true, false
+	}
+
+	e.store[name] = Variable{Value: val, IsMut: true, VariableType: variableType}
+	return val, true, true, true
 }

@@ -285,6 +285,10 @@ func TestErrorHandling(t *testing.T) {
 			"let a, b = func() {}",
 			"function declaration cannot be unpacked",
 		},
+		{
+			"let mut x = 10; x = nil;",
+			"TypeError: cannot assign 'nil' to variable of type 'number'",
+		},
 	}
 
 	for _, tt := range tests {
