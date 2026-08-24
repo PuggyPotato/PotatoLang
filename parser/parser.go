@@ -484,10 +484,10 @@ func (p *Parser) parseReturnTypes() []string {
 	p.NextToken()
 
 	if p.curTokenIs(token.LPAREN) {
-		// Handle empty parenthesis
+		// do not allow empty parenthesis as there is a void type
 		if p.peekTokenIs(token.RPAREN) {
-			p.NextToken()
-			return returnTypes
+			p.errors = append(p.errors, "expected return types inside ()， use 'void' for empty return, or omit arrow for empty returns")
+			return nil
 		}
 	
 	 	p.NextToken()
@@ -504,8 +504,17 @@ func (p *Parser) parseReturnTypes() []string {
 			return nil
 		}
 		return returnTypes
+	} else {
+		returnTypes = append(returnTypes, p.curToken.Literal)
+
+		for p.peekTokenIs(token.COMMA) {
+			p.NextToken()
+			p.NextToken()
+			returnTypes = append(returnTypes, p.curToken.Literal)
+		}
 	}
-	returnTypes = append(returnTypes, p.curToken.Literal)
+
+
 	return returnTypes
 }
 
