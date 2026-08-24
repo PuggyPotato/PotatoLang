@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"potatolang/ast"
 	"potatolang/object"
-	"strings"
 )
 
 var (
@@ -299,10 +298,10 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 		for i, returnType := range returnTypes.Values {
 			actualType := returnType.Type()
 			
-			if string(actualType) != strings.ToUpper(function.ReturnTypes[i]) {
+			if string(actualType) != function.ReturnTypes[i] {
 				isNil := function.ReturnTypes[i] == "error" && string(actualType) == object.NIL_OBJ 
 				if !isNil {
-					return newError("return type mismatch: function expected to return %s, got %s", strings.ToUpper(function.ReturnTypes[i]), string(actualType))
+					return newError("return type mismatch: function expected to return %s, got %s", function.ReturnTypes[i], string(actualType))
 				}
 			}
 		}

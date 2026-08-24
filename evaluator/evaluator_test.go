@@ -223,27 +223,27 @@ func TestErrorHandling(t *testing.T) {
 	} {
 		{
 			"5 + true;",
-			"type mismatch: NUMBER + BOOLEAN",
+			"type mismatch: number + boolean",
 		},
 		{
 			"5 + true; 5;",
-			"type mismatch: NUMBER + BOOLEAN",
+			"type mismatch: number + boolean",
 		},
 		{
 			"-true",
-			"unknown operator: -BOOLEAN",
+			"unknown operator: -boolean",
 		},
 		{
 			"true + false;",
-			"unknown operator: BOOLEAN + BOOLEAN",
+			"unknown operator: boolean + boolean",
 		},
 		{
 			"5; true + false; 5",
-			"unknown operator: BOOLEAN + BOOLEAN",
+			"unknown operator: boolean + boolean",
 		},
 		{
 			"if 10 > 1 { true + false; }",
-			"unknown operator: BOOLEAN + BOOLEAN",
+			"unknown operator: boolean + boolean",
 		},
 		{
 			`if 10 > 1 {
@@ -252,7 +252,7 @@ func TestErrorHandling(t *testing.T) {
 				}
 				return 1;
 			}`,
-			"unknown operator: BOOLEAN + BOOLEAN",
+			"unknown operator: boolean + boolean",
 		},
 		{
 			"foobar",

@@ -8,13 +8,13 @@ import (
 )
 
 const (
-	NUMBER_OBJ = "NUMBER"
-	BOOLEAN_OBJ = "BOOLEAN"
-	NIL_OBJ = "NIL"
-	VOID_OBJ = "VOID"
-	RETURN_VALUE_OBJ = "RETURN_VALUE"
-	ERROR_OBJ = "ERROR"
-	FUNCTION_OBJ = "FUNCTION"
+	NUMBER_OBJ = "number"
+	BOOLEAN_OBJ = "boolean"
+	NIL_OBJ = "nil"
+	VOID_OBJ = "void"
+	RETURN_VALUE_OBJ = "return_value"
+	ERROR_OBJ = "error"
+	FUNCTION_OBJ = "function"
 )
 
 type ObjectType string
