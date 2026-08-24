@@ -286,6 +286,11 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 	if !ok {
 		return newError("not a function: %s", fn.Type())
 	}
+
+	//check if the length argument of the function call == length of function parameters
+	if len(function.Parameters) != len(args) {
+		return newError("type mismatch: expression expects %d arguments, but found %d.", len(function.Parameters), len(args) )
+	}
 	
 	extendedEnv := extendFunctionEnv(function, args)
 	evaluated := Eval(function.Body, extendedEnv)
@@ -294,6 +299,7 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 	}
 
 	if returnTypes, ok := evaluated.(*object.ReturnValue); ok {
+		
 		if len(returnTypes.Values) != len(function.ReturnTypes) {
 			return newError("type mismatch: expression expects %d return values, but found %d.", len(function.ReturnTypes), len(returnTypes.Values) )
 		}
