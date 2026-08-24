@@ -340,9 +340,19 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 		}
 
 		returnVal, ok := evaluated.(*object.ReturnValue)
-		if !ok || len(returnVal.Values) != len(node.Names) {
+		if !ok { // returnVal = nil
+			// function declaration should not be able to be unpacked e.g. a,b = func() {}
+			if _, isFunc := evaluated.(*object.Function); isFunc {
+				return newError("function declaration cannot be unpacked")
+			}
+			// used for common error with 1 value, when returnVal fails  
+			return newError("assignment mismatch: %d variables but %d value", len(node.Names), 1)
+		}
+
+		if len(returnVal.Values) != len(node.Names) {
 			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
 		}
+		
 
 		for i, name := range node.Names {
 			env.Set(name.Value, returnVal.Values[i], name.IsMut)

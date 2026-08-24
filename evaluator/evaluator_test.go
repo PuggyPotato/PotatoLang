@@ -281,6 +281,10 @@ func TestErrorHandling(t *testing.T) {
 			"let a = func() -> number, number { return 5,10; }; let x = a();",
 			"assignment mismatch: 1 variables but 2 values.",
 		},
+		{
+			"let a, b = func() {}",
+			"function declaration cannot be unpacked",
+		},
 	}
 
 	for _, tt := range tests {
