@@ -289,12 +289,14 @@ func applyFunction(fn object.Object, args []object.Object) object.Object {
 	
 	extendedEnv := extendFunctionEnv(function, args)
 	evaluated := Eval(function.Body, extendedEnv)
-
 	if isError(evaluated) {
 		return evaluated
 	}
 
 	if returnTypes, ok := evaluated.(*object.ReturnValue); ok {
+		if len(returnTypes.Values) != len(function.ReturnTypes) {
+			return newError("type mismatch: expression expects %d return values, but found %d.", len(function.ReturnTypes), len(returnTypes.Values) )
+		}
 		for i, returnType := range returnTypes.Values {
 			actualType := returnType.Type()
 			

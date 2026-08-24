@@ -269,6 +269,14 @@ func TestErrorHandling(t *testing.T) {
 			`,
 			"x is not mutable.",
 		},
+		{
+			"let x = func() -> number { return nil; }; x()",
+			"return type mismatch: function expected to return number, got nil",
+		},
+		{
+			"let x = func() { return 5; } x()",
+			"type mismatch: expression expects 0 return values, but found 1.",
+		},
 	}
 
 	for _, tt := range tests {
