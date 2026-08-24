@@ -277,6 +277,10 @@ func TestErrorHandling(t *testing.T) {
 			"let x = func() { return 5; } x()",
 			"type mismatch: expression expects 0 return values, but found 1.",
 		},
+		{
+			"let a = func() -> number, number { return 5,10; }; let x = a();",
+			"assignment mismatch: 1 variables but 2 values.",
+		},
 	}
 
 	for _, tt := range tests {

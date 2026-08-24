@@ -359,6 +359,17 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 		if isError(evaluated) {
 			return evaluated
 		}
+		
+		if returnVal, ok := evaluated.(*object.ReturnValue); ok {
+			if len(returnVal.Values) == 1 {
+				evaluated = returnVal.Values[0]
+			}
+
+			if len(returnVal.Values) > 1 {
+				return newError("assignment mismatch: 1 variables but %d values.", len(returnVal.Values))
+			}
+		}
+		
 		env.Set(node.Names[i].Value, evaluated, node.Names[i].IsMut)
 	}
 	return VOID
