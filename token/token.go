@@ -55,6 +55,7 @@ const (
 	ERROR_TYPE = "ERROR_TYPE"
 	BOOLEAN_TYPE = "BOOLEAN_TYPE"
 
+	VOID_VALUE = "VOID_VALUE"
 	NIL_VALUE = "NIL_VALUE"
 )
 
@@ -72,6 +73,7 @@ var keywords = map[string] TokenType {
 	"string": STRING_TYPE,
 	"error": ERROR_TYPE,
 	"nil": NIL_VALUE,
+	"void": VOID_VALUE,
 }
 
 func LookupIdent(ident string) TokenType {
