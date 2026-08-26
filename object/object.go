@@ -15,6 +15,7 @@ const (
 	RETURN_VALUE_OBJ = "return_value"
 	ERROR_OBJ = "error"
 	FUNCTION_OBJ = "function"
+	STRING_OBJ = "string"
 )
 
 type ObjectType string
@@ -105,3 +106,10 @@ func (f *Function) Inspect() string {
 
 	return out.String()
 }
+
+type String struct {
+	Value string
+}
+
+func (s *String) Type() ObjectType { return STRING_OBJ }
+func (s *String) Inspect() string { return s.Value }
