@@ -138,23 +138,6 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 	return VOID
 }
 
-func evalBlockStatementAsExpression(block *ast.BlockStatement, env *object.Environment) object.Object {
-	var result object.Object = VOID
-
-	for _, statement := range block.Statements {
-		result = Eval(statement, env)
-
-		if result != nil {
-			rt := result.Type()
-			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
-				return result
-			}
-		}
-
-	}
-	return result
-}
-
 func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
@@ -268,31 +251,6 @@ func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Obje
 	}
 }
 
-func evalIfExpressionAsExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
-	condition := Eval(ie.Condition, env)
-	if isError(condition) {
-		return condition
-	}
-
-	var result object.Object
-	
-	if isTruthy(condition) {
-		result = evalBlockStatementAsExpression(ie.Consequence, env)
-	} else if ie.Alternative != nil {
-		result = evalBlockStatementAsExpression(ie.Alternative, env)
-	} else {
-		return newError("if expression: branch produced no value")
-	}
-
-	if isError(result) {
-		return result
-	}
-
-	if result.Type() == object.VOID_OBJ {
-		return newError("if expression: branch produced no value")
-	}
-	return result
-}
 
 func isTruthy(obj object.Object) bool {
 	switch obj {
@@ -321,15 +279,24 @@ func isError(obj object.Object) bool {
 }
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
-	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("identifier not found: %s", node.Value)
+	if val, ok := env.Get(node.Value); ok {
+		return val
 	}
 
-	return val
+	if builtin, ok := builtins[node.Value]; ok {
+		return builtin
+	}
+	
+
+	return newError("identifier not found: %s", node.Value)
 }
 
 func applyFunction(fn object.Object, args []object.Object) object.Object {
+
+	if builtin, ok := fn.(*object.Builtin); ok {
+		return builtin.Func(args...)
+	}
+	
 	function, ok := fn.(*object.Function)
 	if !ok {
 		return newError("not a function: %s", fn.Type())
@@ -418,15 +385,14 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 	}
 
 	for i, val := range node.Values {
-		var evaluated object.Object
-		if ifExpr, isIf := val.(*ast.IfExpression); isIf {
-			evaluated = evalIfExpressionAsExpression(ifExpr, env)
-		} else {
-			evaluated = Eval(val, env)
-		}
-		if isError(evaluated) {
-			return evaluated
-		}
+		if _, isIf := val.(*ast.IfExpression); isIf {
+	        return newError("if cannot be used as a value; use it as a statement instead")
+	    }
+			
+	    evaluated := Eval(val, env)
+	    if isError(evaluated) {
+	        return evaluated
+	    }
 		
 		if returnVal, ok := evaluated.(*object.ReturnValue); ok {
 			if len(returnVal.Values) == 1 {
@@ -488,12 +454,10 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 	}
 
 	for i, val := range node.Values {
-		var evaluated object.Object
-		if ifExpr, isIf := val.(*ast.IfExpression); isIf {
-			evaluated = evalIfExpressionAsExpression(ifExpr, env)
-		} else {
-			evaluated = Eval(val, env)
+		if _, isIf := val.(*ast.IfExpression); isIf {
+			return newError("if cannot be used as a value; use it as a statement instead")
 		}
+		evaluated := Eval(val, env)
 		if isError(evaluated) {
 			return evaluated
 		}
