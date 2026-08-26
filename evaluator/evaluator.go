@@ -138,6 +138,23 @@ func evalBlockStatement(block *ast.BlockStatement, env *object.Environment) obje
 	return VOID
 }
 
+func evalBlockStatementAsExpression(block *ast.BlockStatement, env *object.Environment) object.Object {
+	var result object.Object = VOID
+
+	for _, statement := range block.Statements {
+		result = Eval(statement, env)
+
+		if result != nil {
+			rt := result.Type()
+			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
+				return result
+			}
+		}
+
+	}
+	return result
+}
+
 func nativeBoolToBooleanObject(input bool) *object.Boolean {
 	if input {
 		return TRUE
@@ -249,6 +266,32 @@ func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Obje
 	} else {
 		return VOID
 	}
+}
+
+func evalIfExpressionAsExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
+	condition := Eval(ie.Condition, env)
+	if isError(condition) {
+		return condition
+	}
+
+	var result object.Object
+	
+	if isTruthy(condition) {
+		result = evalBlockStatementAsExpression(ie.Consequence, env)
+	} else if ie.Alternative != nil {
+		result = evalBlockStatementAsExpression(ie.Alternative, env)
+	} else {
+		return newError("if expression: branch produced no value")
+	}
+
+	if isError(result) {
+		return result
+	}
+
+	if result.Type() == object.VOID_OBJ {
+		return newError("if expression: branch produced no value")
+	}
+	return result
 }
 
 func isTruthy(obj object.Object) bool {
@@ -375,7 +418,12 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 	}
 
 	for i, val := range node.Values {
-		evaluated := Eval(val, env)
+		var evaluated object.Object
+		if ifExpr, isIf := val.(*ast.IfExpression); isIf {
+			evaluated = evalIfExpressionAsExpression(ifExpr, env)
+		} else {
+			evaluated = Eval(val, env)
+		}
 		if isError(evaluated) {
 			return evaluated
 		}
@@ -440,8 +488,16 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 	}
 
 	for i, val := range node.Values {
-		evaluated := Eval(val, env)
+		var evaluated object.Object
+		if ifExpr, isIf := val.(*ast.IfExpression); isIf {
+			evaluated = evalIfExpressionAsExpression(ifExpr, env)
+		} else {
+			evaluated = Eval(val, env)
+		}
 		if isError(evaluated) {
+			return evaluated
+		}
+		if _, isReturn := evaluated.(*object.ReturnValue); isReturn {
 			return evaluated
 		}
 		variableName, exist, isMut, isSameType := env.Reassign(node.Names[i].Value, evaluated, string(evaluated.Type()))
@@ -458,7 +514,6 @@ func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) o
 			return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
 		}
 		
-		env.Reassign(node.Names[i].Value, evaluated, string(evaluated.Type()))
 	}
 	return VOID
 }
