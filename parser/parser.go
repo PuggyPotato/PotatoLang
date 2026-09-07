@@ -96,6 +96,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
+	p.registerInfix(token.ASSIGN, p.parseAssignExpression)
 
 	return p
 }
@@ -643,6 +644,14 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	if !p.expectPeek(token.RBRACKET) {
 		return nil
 	}
+	return exp
+}
+
+func (p *Parser) parseAssignExpression(left ast.Expression) ast.Expression {
+	exp := &ast.AssignExpression{Token: p.curToken, Left: left}
+
+	p.NextToken()
+	exp.Value = p.parseExpression(LOWEST)
 
 	return exp
 }

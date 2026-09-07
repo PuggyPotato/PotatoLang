@@ -400,3 +400,21 @@ func (ie *IndexExpression) String() string {
 
 	return out.String()
 }
+
+type AssignExpression struct {
+	Token token.Token // the '=' token
+	Left Expression
+	Value Expression 
+}
+
+func (ae *AssignExpression) expressionNode() {}
+func (ae *AssignExpression) TokenLiteral() string { return ae.Token.Literal }
+func (ae *AssignExpression) String() string {
+	var out bytes.Buffer
+
+	out.WriteString(ae.Left.String())
+	out.WriteString(" = ")
+	out.WriteString(ae.Value.String())
+
+	return out.String()
+}

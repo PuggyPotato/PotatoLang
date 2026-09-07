@@ -118,8 +118,11 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 		return evalIndexExpression(left, index)
 
-	}
+	case *ast.AssignExpression:
+		return evalAssignExpression(node, env)
 	
+	}
+
 	return nil
 }
 
@@ -530,4 +533,64 @@ func evalArrayIndexExpression(array object.Object, index object.Object) object.O
 	}
 
 	return arrayObject.Elements[int64(idx)]
+}
+
+func evalAssignExpression(node *ast.AssignExpression, env *object.Environment) object.Object {
+	if _, isIf := node.Value.(*ast.IfExpression); isIf {
+		return newError("if cannot be used as a value; use it as a statement instead.")
+	}
+
+	evaluated := Eval(node.Value, env)
+	if isError(evaluated) {
+		return evaluated
+	}
+
+	if _, isReturn := evaluated.(*object.ReturnValue); isReturn {
+		return evaluated
+	}
+
+	switch target := node.Left.(type) {
+		case *ast.Identifier:
+			variableName, exist, isMut, isSameType := env.Reassign(target.Value, evaluated, string(evaluated.Type()))
+			if !exist {
+				return newError("%s is undefined.", target.Value)
+			}
+			if !isMut {
+				return newError("%s is not mutable.", target.Value)
+			}
+			if !isSameType {
+				return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
+			}
+			return evaluated
+
+		case *ast.IndexExpression:
+			left := Eval(target.Left, env)
+			if isError(left) {
+				return left
+			}
+			index := Eval(target.Index, env)
+			if isError(index) {
+				return index
+			}
+
+			arr, ok := left.(*object.Array)
+			if !ok {
+				return newError("index assignment not supported: %s", left.Type())
+			}
+			idxNum, ok := index.(*object.Number)
+			if !ok {
+				return newError("array index must be a number, got %s", index.Type())
+			}
+
+			idx := int(idxNum.Value)
+			if idx < 0 || idx >= len(arr.Elements) {
+				return newError("index out of range: %d", idx)
+			}
+
+			arr.Elements[idx] = evaluated
+			return evaluated
+
+		default:
+			return newError("invalid assignment target: %T", node.Left)
+	}
 }
