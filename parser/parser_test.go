@@ -786,32 +786,31 @@ func TestAssignStatements(t *testing.T) {
 		if len(program.Statements) != 1 {
 			t.Fatalf("program.Statements does not contain 1 statement. got=%d", len(program.Statements))
 		}
-		
+
 		stmt, ok := program.Statements[0].(*ast.AssignStatement)
 		if !ok {
 			t.Fatalf("program.Statements[0] is not ast.AssignStatement. got=%T", program.Statements[0])
 		}
-		
+
 		if len(stmt.Names) != len(tt.expectedIdentifier) {
-			t.Fatalf("wrong number of names. want=%d, got=%d", len(tt.expectedIdentifier), len(stmt.Names))
+			t.Fatalf("wrong number of targets. want=%d, got=%d", len(tt.expectedIdentifier), len(stmt.Names))
 		}
-		
+
 		for i, expectedName := range tt.expectedIdentifier {
-			if stmt.Names[i].Value != expectedName {
-				t.Errorf("identifier wrong. want=%q got=%q", expectedName, stmt.Names[i].Value)
+			if stmt.Names[i].TokenLiteral() != expectedName {
+				t.Errorf("identifier wrong. want=%q got=%q", expectedName, stmt.Names[i].TokenLiteral())
 			}
 		}
-		
+
 		if len(stmt.Values) != len(tt.expectedValue) {
 			t.Fatalf("wrong number of values. want=%d, got=%d", len(tt.expectedValue), len(stmt.Values))
 		}
-		
+
 		for i, expectedVal := range tt.expectedValue {
 			testLiteralExpression(t, stmt.Values[i], expectedVal)
 		}
 	}
 }
-
 func TestStringLiteralExpression(t *testing.T) {
 	input := `"hello world";`
 

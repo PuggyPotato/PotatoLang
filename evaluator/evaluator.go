@@ -432,74 +432,75 @@ func EvalLetStatement(node *ast.LetStatement, env *object.Environment) object.Ob
 }
 
 func EvalReassignStatement(node *ast.AssignStatement, env *object.Environment) object.Object{
-	if len(node.Names) > 1 && len(node.Values) == 1 {
-		evaluated := Eval(node.Values[0], env)
-		if isError(evaluated) {
-			return evaluated
-		}
-
-		returnVal, ok := evaluated.(*object.ReturnValue)
-		if !ok { // returnVal = nil
-			// function declaration should not be able to be unpacked e.g. a,b = func() {}
-			if _, isFunc := evaluated.(*object.Function); isFunc {
-				return newError("function declaration cannot be unpacked")
-			}
-			// used for common error with 1 value, when returnVal fails  
-			return newError("assignment mismatch: %d variables but %d value", len(node.Names), 1)
-		}
-
-		if len(returnVal.Values) != len(node.Names) {
-			return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(returnVal.Values))
-		}
-
-		for i, name := range node.Names {
-			variableName, exist, isMut, isSameType := env.Reassign(name.Value, returnVal.Values[i], string(returnVal.Values[i].Type()))
-			
-			if !exist {
-				return newError("undefined: %s",name.Value)
-			}
-
-			if !isMut {
-				return newError("%s is not mutable.",name.Value)
-			}
-
-			if !isSameType {
-				return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
-			}
-			
-		}
-		return VOID
+	values, ok := resolveAssignValues(node.Names, node.Values, env)
+	if !ok {
+		return values[0]
 	}
 
-	if len(node.Values) != len(node.Names) {
-		return newError("assignment mismatch: %d variables but %d value", len(node.Names), len(node.Values))
-	}
+	for i, name := range node.Names {
+		val := values[i]
 
-	for i, val := range node.Values {
-		if _, isIf := val.(*ast.IfExpression); isIf {
-			return newError("if cannot be used as a value; use it as a statement instead")
-		}
-		evaluated := Eval(val, env)
-		if isError(evaluated) {
-			return evaluated
-		}
-		if _, isReturn := evaluated.(*object.ReturnValue); isReturn {
-			return evaluated
-		}
-		variableName, exist, isMut, isSameType := env.Reassign(node.Names[i].Value, evaluated, string(evaluated.Type()))
-		
-		if !exist {
-			return newError("%s is undefined.",node.Names[i].Value)
-		}
+		switch n := name.(type) {
+			case *ast.Identifier:
+				variableName, exist, isMut, isSameType := env.Reassign(n.Value, val, string(val.Type()))
+				if !exist {
+				return newError("%s is undefined.", n.Value)
+					}
+				if !isMut {
+					return newError("%s is not mutable.", n.Value)
+				}
+				if !isSameType {
+					return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(val.Type()), variableName.Type())
+				}
+			
+			case *ast.IndexExpression:
+				root, ok := rootIdentifier(n)
+				
+				if !ok {
+					return newError("invalid assignment target: %T", n)
+				}
 
-		if !isMut {
-			return newError("%s is not mutable.",node.Names[i].Value)
-		}
+				isMut, exists := env.IsMutable(root.Value)
 
-		if !isSameType {
-			return newError("TypeError: cannot assign '%s' to variable of type '%s'", string(evaluated.Type()), variableName.Type())
+				if !exists {
+					return newError("%s is undefined.", root.Value)
+				}
+
+				if !isMut {
+					return newError("%s is not mutable.", root.Value)
+				}
+				left := Eval(n.Left, env)
+
+				if isError(left) {
+					return left
+				}
+
+				index := Eval(n.Index, env)
+
+				if isError(index) {
+					return index
+				}
+
+				arr, ok := left.(*object.Array)
+				if !ok {
+					return newError("index assignment not supported: %s", left.Type())
+				}
+				
+				idxNum, ok := index.(*object.Number)
+				if !ok {
+					return newError("array index must be a number, got %s", index.Type())
+				}
+
+				idx := int(idxNum.Value)
+				if idx < 0 || idx >= len(arr.Elements) {
+					return newError("index out of range: %d", idx)
+				}
+
+				arr.Elements[idx] = val
+
+			default:
+				return newError("invalid assignment target: %T", name)
 		}
-		
 	}
 	return VOID
 }
@@ -592,5 +593,65 @@ func evalAssignExpression(node *ast.AssignExpression, env *object.Environment) o
 
 		default:
 			return newError("invalid assignment target: %T", node.Left)
+	}
+}
+
+func resolveAssignValues(targets []ast.Expression, values []ast.Expression, env *object.Environment) ([]object.Object, bool) {
+	if len(targets) > 1 && len(values) == 1 {
+		evaluated := Eval(values[0], env)
+
+		if isError(evaluated) {
+			return []object.Object{evaluated}, false
+		}
+
+		returnVal, ok := evaluated.(*object.ReturnValue)
+
+		if !ok {
+			if _, isFunc := evaluated.(*object.Function); isFunc {
+				return []object.Object{newError("function declaration cannot be unpacked")}, false
+			}
+			return []object.Object{newError("assignment mismatch: %d variables but %d value", len(targets), 1)}, false
+		}
+
+		if len(returnVal.Values) != len(targets) {
+			return []object.Object{newError("assignment mismatch: %d variables but %d value", len(targets), len(returnVal.Values))}, false
+		}
+		return returnVal.Values, true
+
+	}
+
+	if len(targets) != len(values) {
+		return []object.Object{newError("assignment mismatch: %d variables but %d value", len(targets), len(values))}, false
+	}
+
+	result := make([]object.Object, len(values))
+	for i, val := range values {
+		if _, isIf := val.(*ast.IfExpression); isIf {
+			return []object.Object{newError("if cannot be used as a value; use it as a statement instead")}, false
+		}
+
+		evaluated := Eval(val, env)
+		if isError(evaluated) {
+			return []object.Object{evaluated}, false
+		}
+
+		if _, isReturn := evaluated.(*object.ReturnValue); isReturn {
+			return []object.Object{evaluated}, false
+		}
+
+		result[i] = evaluated
+	}
+
+	return result, true
+}
+
+func rootIdentifier(exp ast.Expression) (*ast.Identifier, bool) {
+	switch e := exp.(type) {
+	case *ast.Identifier:
+		return e, true
+	case *ast.IndexExpression:
+		return rootIdentifier(e.Left)
+	default:
+		return nil, false
 	}
 }

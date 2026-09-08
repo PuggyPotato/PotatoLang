@@ -96,7 +96,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
-	p.registerInfix(token.ASSIGN, p.parseAssignExpression)
 
 	return p
 }
@@ -129,10 +128,7 @@ func (p *Parser) parseStatement() ast.Statement {
 		case token.RETURN:
 			return p.parseReturnStatement()
 		default:
-			if p.curTokenIs(token.IDENT) && (p.peekTokenIs(token.ASSIGN) || p.peekTokenIs(token.COMMA)) {
-				return p.parseAssignStatement()
-			}
-			return p.parseExpressionStatement()
+			return p.parseAssignOrExpressionStatement()
 	}
 }
 
@@ -559,7 +555,7 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 func (p *Parser) parseNil() ast.Expression {
 	return &ast.NilLiteral{Token: p.curToken}
 }
-
+/*
 func (p *Parser) parseAssignStatement() *ast.AssignStatement {
 	stmt := &ast.AssignStatement{Token: p.curToken}
 	stmt.Names = []*ast.Identifier{}
@@ -598,6 +594,7 @@ func (p *Parser) parseAssignStatement() *ast.AssignStatement {
 
 	return stmt
 }
+	*/
 
 func (p *Parser) parseStringLiteral() ast.Expression {
 	return &ast.StringLiteral{Token: p.curToken, Value: p.curToken.Literal}
@@ -647,6 +644,7 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	return exp
 }
 
+/*
 func (p *Parser) parseAssignExpression(left ast.Expression) ast.Expression {
 	exp := &ast.AssignExpression{Token: p.curToken, Left: left}
 
@@ -654,4 +652,47 @@ func (p *Parser) parseAssignExpression(left ast.Expression) ast.Expression {
 	exp.Value = p.parseExpression(LOWEST)
 
 	return exp
+}
+*/
+func (p *Parser) parseAssignOrExpressionStatement() ast.Statement {
+	startToken := p.curToken
+	first := p.parseExpression(LOWEST)
+
+	names := []ast.Expression{first}
+	for p.peekTokenIs(token.COMMA) {
+		p.NextToken()
+		p.NextToken()
+		names = append(names, p.parseExpression(LOWEST))
+	}
+
+	if p.peekTokenIs(token.ASSIGN) {
+		p.NextToken() // consumes '='
+		stmt := &ast.AssignStatement{Token: startToken, Names: names}
+
+		p.NextToken()
+		stmt.Values = append(stmt.Values, p.parseExpression(LOWEST))
+
+		for p.peekTokenIs(token.COMMA) {
+			p.NextToken()
+			p.NextToken()
+			stmt.Values = append(stmt.Values, p.parseExpression(LOWEST))
+		}
+
+		if p.peekTokenIs(token.SEMICOLON) {
+			p.NextToken()
+		}
+		return stmt
+	}
+
+	if len(names) > 1 {
+		p.errors = append(p.errors, "unexpected ',' in expression statement")
+	}
+
+	stmt := &ast.ExpressionStatement{Token: startToken, Expression: first}
+	if p.peekTokenIs(token.SEMICOLON) {
+		p.NextToken()
+	}
+
+	return stmt
+
 }

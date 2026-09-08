@@ -59,3 +59,14 @@ func (e *Environment) Reassign(name string, val Object, variableType string) (Ob
 	e.store[name] = Variable{Value: val, IsMut: true, VariableType: variableType}
 	return val, true, true, true
 }
+
+func (e *Environment) IsMutable(name string) (isMut bool, exists bool) {
+	variable, ok := e.store[name]
+	if !ok {
+		if e.outer != nil {
+			return e.outer.IsMutable(name)
+		}
+		return false, false
+	}
+	return variable.IsMut, true
+}

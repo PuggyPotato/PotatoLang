@@ -319,7 +319,7 @@ func (nl *NilLiteral) String() string { return nl.Token.Literal }
 
 type AssignStatement struct {
 	Token token.Token // the '=' token 
-	Names []*Identifier
+	Names []Expression
 	Values []Expression 
 }
 
